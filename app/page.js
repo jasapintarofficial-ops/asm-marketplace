@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { supabase } from './lib/supabase'
 
 export default function Home() {
   const [modal, setModal] = useState(null)
@@ -20,25 +19,41 @@ export default function Home() {
       return
     }
     setStatus('loading')
-    
-    const { error } = await supabase
-      .from('orders')
-      .insert({
-        order_code: 'ASM-' + Date.now(),
-        service_category: modal.id,
-        address_detail: form.alamat,
-        sub_district: '-',
-        city: '-',
-        notes_consumer: form.nama + ' | ' + form.hp + ' | ' + form.keluhan,
-        status: 'pending',
-        payment_status: 'unpaid'
-      })
 
-    if(error) {
-      console.error(error)
+    try {
+      const res = await fetch(
+        'https://qxvawdvddqogwntfpmtq.supabase.co/rest/v1/orders',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'sb_publishable_vpKZ-o_POYCsPxk398F6jg_AJaOgsFU',
+            'Authorization': 'Bearer sb_publishable_vpKZ-o_POYCsPxk398F6jg_AJaOgsFU',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            order_code: 'ASM-' + Date.now(),
+            service_category: modal.id,
+            address_detail: form.alamat,
+            sub_district: '-',
+            city: '-',
+            notes_consumer: form.nama + ' | HP: ' + form.hp + ' | ' + form.keluhan,
+            status: 'pending',
+            payment_status: 'unpaid'
+          })
+        }
+      )
+
+      if(res.status === 201 || res.ok) {
+        setStatus('sukses')
+      } else {
+        const err = await res.text()
+        console.error('Error:', res.status, err)
+        setStatus('error')
+      }
+    } catch(e) {
+      console.error(e)
       setStatus('error')
-    } else {
-      setStatus('sukses')
     }
   }
 
@@ -103,5 +118,3 @@ export default function Home() {
         </div>
       )}
     </main>
-  )
-}
