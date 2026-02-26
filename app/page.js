@@ -1,31 +1,6 @@
 'use client'
 import { useState } from 'react'
-
-const SUPABASE_URL = 'https://qxvawdvddqogwntfpmtq.supabase.co'
-const SUPABASE_KEY = 'sb_publishable_vpKZ-o_POYCsPxk398F6jg_AJaOgsFU'
-
-async function simpanOrder(data) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({
-      order_code: 'ASM-' + Date.now(),
-      service_category: data.layanan,
-      address_detail: data.alamat,
-      sub_district: '-',
-      city: '-',
-      notes_consumer: data.keluhan,
-      status: 'pending',
-      payment_status: 'unpaid'
-    })
-  })
-  return res.ok
-}
+import { supabase } from './lib/supabase'
 
 export default function Home() {
   const [modal, setModal] = useState(null)
@@ -45,14 +20,26 @@ export default function Home() {
       return
     }
     setStatus('loading')
-    const berhasil = await simpanOrder({
-      layanan: modal.id,
-      nama: form.nama,
-      hp: form.hp,
-      alamat: form.alamat,
-      keluhan: form.keluhan
-    })
-    setStatus(berhasil ? 'sukses' : 'error')
+    
+    const { error } = await supabase
+      .from('orders')
+      .insert({
+        order_code: 'ASM-' + Date.now(),
+        service_category: modal.id,
+        address_detail: form.alamat,
+        sub_district: '-',
+        city: '-',
+        notes_consumer: form.nama + ' | ' + form.hp + ' | ' + form.keluhan,
+        status: 'pending',
+        payment_status: 'unpaid'
+      })
+
+    if(error) {
+      console.error(error)
+      setStatus('error')
+    } else {
+      setStatus('sukses')
+    }
   }
 
   return (
