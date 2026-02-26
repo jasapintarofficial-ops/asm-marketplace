@@ -1,10 +1,36 @@
 'use client'
 import { useState } from 'react'
 
+const SUPABASE_URL = 'https://qxvawdvddqogwntfpmtq.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_vpKZ-o_POYCsPxk398F6jg_AJaOgsFU'
+
+async function simpanOrder(data) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({
+      order_code: 'ASM-' + Date.now(),
+      service_category: data.layanan,
+      address_detail: data.alamat,
+      sub_district: '-',
+      city: '-',
+      notes_consumer: data.keluhan,
+      status: 'pending',
+      payment_status: 'unpaid'
+    })
+  })
+  return res.ok
+}
+
 export default function Home() {
   const [modal, setModal] = useState(null)
-  const [form, setForm] = useState({nama:'', hp:'', alamat:'', keluhan:''})
-  const [terkirim, setTerkirim] = useState(false)
+  const [form, setForm] = useState({nama:'',hp:'',alamat:'',keluhan:''})
+  const [status, setStatus] = useState('idle')
 
   const layanan = [
     {id:'service_ac', icon:'❄️', judul:'Service AC', desc:'Teknisi berpengalaman, bergaransi 7 hari', warna:'#2563eb', bg:'#eff6ff'},
@@ -13,17 +39,25 @@ export default function Home() {
     {id:'instalasi_listrik', icon:'⚡', judul:'Instalasi Listrik', desc:'Teknisi bersertifikat PLN', warna:'#9333ea', bg:'#fdf4ff'},
   ]
 
-  function kirimPesanan() {
+  async function kirimPesanan() {
     if(!form.nama || !form.hp || !form.alamat) {
       alert('Mohon lengkapi semua data!')
       return
     }
-    setTerkirim(true)
+    setStatus('loading')
+    const berhasil = await simpanOrder({
+      layanan: modal.id,
+      nama: form.nama,
+      hp: form.hp,
+      alamat: form.alamat,
+      keluhan: form.keluhan
+    })
+    setStatus(berhasil ? 'sukses' : 'error')
   }
 
   return (
     <main style={{fontFamily:'sans-serif', maxWidth:'800px', margin:'0 auto', padding:'20px'}}>
-      <h1 style={{color:'#2563eb'}}>🔧 JasaPintar</h1>
+      <h1 style={{color:'#2563eb'}}>🔧 PasarJasa</h1>
       <p style={{fontSize:'18px', color:'#555'}}>Platform jasa profesional terpercaya — Bergaransi & Terpercaya</p>
 
       <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'20px', marginTop:'30px'}}>
@@ -32,7 +66,7 @@ export default function Home() {
             <h2 style={{margin:'0 0 8px'}}>{l.icon} {l.judul}</h2>
             <p style={{color:'#666', margin:'0 0 16px'}}>{l.desc}</p>
             <button
-              onClick={() => { setModal(l); setTerkirim(false); setForm({nama:'',hp:'',alamat:'',keluhan:''}) }}
+              onClick={() => { setModal(l); setStatus('idle'); setForm({nama:'',hp:'',alamat:'',keluhan:''}) }}
               style={{background:l.warna, color:'white', padding:'10px 20px', border:'none', borderRadius:'5px', cursor:'pointer', fontWeight:'bold'}}>
               Pesan Sekarang
             </button>
@@ -41,9 +75,20 @@ export default function Home() {
       </div>
 
       {modal && (
-        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999}}>
-          <div style={{background:'white', padding:'30px', borderRadius:'12px', width:'90%', maxWidth:'400px'}}>
-            {!terkirim ? (
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999, padding:'20px'}}>
+          <div style={{background:'white', padding:'30px', borderRadius:'12px', width:'100%', maxWidth:'400px'}}>
+            {status === 'sukses' ? (
+              <div style={{textAlign:'center', padding:'20px'}}>
+                <div style={{fontSize:'60px'}}>✅</div>
+                <h2 style={{color:'#16a34a'}}>Pesanan Diterima!</h2>
+                <p>Halo <strong>{form.nama}</strong>! Pesanan <strong>{modal.judul}</strong> sudah kami terima.</p>
+                <p style={{color:'#666'}}>Tim kami akan menghubungi <strong>{form.hp}</strong> dalam 15 menit.</p>
+                <button onClick={()=>setModal(null)}
+                  style={{marginTop:'16px', padding:'10px 30px', background:'#2563eb', color:'white', border:'none', borderRadius:'5px', cursor:'pointer', fontWeight:'bold'}}>
+                  Tutup
+                </button>
+              </div>
+            ) : (
               <>
                 <h2 style={{margin:'0 0 20px'}}>{modal.icon} Pesan {modal.judul}</h2>
                 <input placeholder="Nama lengkap *" value={form.nama} onChange={e=>setForm({...form,nama:e.target.value})}
@@ -54,28 +99,18 @@ export default function Home() {
                   style={{width:'100%', padding:'10px', marginBottom:'10px', border:'1px solid #ddd', borderRadius:'5px', boxSizing:'border-box'}}/>
                 <textarea placeholder="Keluhan / keterangan tambahan" value={form.keluhan} onChange={e=>setForm({...form,keluhan:e.target.value})}
                   style={{width:'100%', padding:'10px', marginBottom:'16px', border:'1px solid #ddd', borderRadius:'5px', boxSizing:'border-box', height:'80px'}}/>
+                {status === 'error' && <p style={{color:'red', marginBottom:'10px'}}>❌ Gagal kirim, coba lagi!</p>}
                 <div style={{display:'flex', gap:'10px'}}>
                   <button onClick={()=>setModal(null)}
                     style={{flex:1, padding:'10px', border:'1px solid #ddd', borderRadius:'5px', cursor:'pointer', background:'white'}}>
                     Batal
                   </button>
-                  <button onClick={kirimPesanan}
-                    style={{flex:2, padding:'10px', background:modal.warna, color:'white', border:'none', borderRadius:'5px', cursor:'pointer', fontWeight:'bold'}}>
-                    Kirim Pesanan
+                  <button onClick={kirimPesanan} disabled={status==='loading'}
+                    style={{flex:2, padding:'10px', background: status==='loading' ? '#999' : modal.warna, color:'white', border:'none', borderRadius:'5px', cursor:'pointer', fontWeight:'bold'}}>
+                    {status === 'loading' ? 'Mengirim...' : 'Kirim Pesanan'}
                   </button>
                 </div>
               </>
-            ) : (
-              <div style={{textAlign:'center', padding:'20px'}}>
-                <div style={{fontSize:'60px'}}>✅</div>
-                <h2 style={{color:'#16a34a'}}>Pesanan Diterima!</h2>
-                <p>Halo <strong>{form.nama}</strong>! Pesanan <strong>{modal.judul}</strong> Anda sudah kami terima.</p>
-                <p style={{color:'#666'}}>Tim kami akan menghubungi <strong>{form.hp}</strong> dalam 15 menit.</p>
-                <button onClick={()=>setModal(null)}
-                  style={{marginTop:'16px', padding:'10px 30px', background:'#2563eb', color:'white', border:'none', borderRadius:'5px', cursor:'pointer', fontWeight:'bold'}}>
-                  Tutup
-                </button>
-              </div>
             )}
           </div>
         </div>
